@@ -26,6 +26,14 @@ use crate::types::TransactionStatus;
 
 // ─── Event data structs ───────────────────────────────────────────────────────
 
+/// Emitted by [`SynapseCoreContract::revoke_admin_emergency`]. Alert on this.
+#[contracttype]
+pub struct EventAdminRevokedEmergency {
+    pub revoked_admin: soroban_sdk::Address,
+    pub approvals: u32,
+    pub ledger: u32,
+}
+
 /// Emitted by [`SynapseCoreContract::guardian_pause`]; distinct from
 /// [`EventPauseToggled`] so forensics can tell guardian pauses apart.
 #[contracttype]
@@ -352,6 +360,22 @@ impl EventEmitter {
             (symbol_short!("synapse"), symbol_short!("gpause")),
             EventGuardianPaused {
                 guardian: guardian.clone(),
+                ledger: env.ledger().sequence(),
+            },
+        );
+    }
+
+    /// Emit [`EventAdminRevokedEmergency`].
+    pub fn admin_revoked_emergency(
+        env: &Env,
+        revoked_admin: &soroban_sdk::Address,
+        approvals: u32,
+    ) {
+        env.events().publish(
+            (symbol_short!("synapse"), symbol_short!("adm_rev")),
+            EventAdminRevokedEmergency {
+                revoked_admin: revoked_admin.clone(),
+                approvals,
                 ledger: env.ledger().sequence(),
             },
         );

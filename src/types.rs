@@ -180,6 +180,10 @@ pub enum StorageKey {
     Scopes(soroban_sdk::Address),
     /// Singleton: guardian address set (may `guardian_pause`).
     Guardians,
+    /// Singleton: guardian quorum M required by `revoke_admin_emergency`.
+    GuardianThreshold,
+    /// Singleton: set once the admin was revoked via break-glass.
+    AdminVacant,
 }
 
 /// Narrow processing-lifecycle permissions grantable independently of the
@@ -259,6 +263,11 @@ pub enum ContractError {
     /// on-chain [`SchemaVersion`](StorageKey::SchemaVersion); the upgrade was
     /// aborted before touching contract WASM.
     SchemaVersionMismatch = 60,
+    /// Guardian quorum is not configured or was not met.
+    QuorumNotMet = 302,
+    /// The admin role is vacant (break-glass revocation); admin-gated
+    /// operations are unavailable.
+    AdminVacant = 303,
     /// Caller is not a guardian.
     NotGuardian = 301,
 

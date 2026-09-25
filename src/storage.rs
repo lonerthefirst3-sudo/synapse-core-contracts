@@ -66,7 +66,11 @@ impl StorageClient {
         env.storage()
             .persistent()
             .get(&StorageKey::Admin)
-            .ok_or(ContractError::NotInitialised)
+            .ok_or(if Self::is_admin_vacant(env) {
+                ContractError::AdminVacant
+            } else {
+                ContractError::NotInitialised
+            })
     }
 
     /// Persist an admin address.
@@ -256,5 +260,34 @@ impl StorageClient {
         env.storage()
             .persistent()
             .set(&StorageKey::Guardians, guardians);
+    }
+
+    // ── Emergency admin revocation ────────────────────────────────────────────
+
+    /// Guardian quorum M (0 = unset).
+    pub fn get_guardian_threshold(env: &Env) -> u32 {
+        env.storage()
+            .persistent()
+            .get(&StorageKey::GuardianThreshold)
+            .unwrap_or(0)
+    }
+
+    /// Persist the guardian quorum M.
+    pub fn set_guardian_threshold(env: &Env, m: u32) {
+        env.storage()
+            .persistent()
+            .set(&StorageKey::GuardianThreshold, &m);
+    }
+
+    /// Whether the admin was revoked via break-glass.
+    pub fn is_admin_vacant(env: &Env) -> bool {
+        env.storage().persistent().has(&StorageKey::AdminVacant)
+    }
+
+    /// Remove the admin and mark the role vacant.
+    pub fn vacate_admin(env: &Env) {
+        env.storage().persistent().remove(&StorageKey::Admin);
+        env.storage().persistent().remove(&StorageKey::PendingAdmin);
+        env.storage().persistent().set(&StorageKey::AdminVacant, &true);
     }
 }

@@ -488,6 +488,58 @@ impl SynapseCoreContract {
         Ok(())
     }
 
+    /// Set the guardian quorum M for [`Self::revoke_admin_emergency`].
+    /// Admin-gated; must satisfy `1 <= m <= guardians.len()`.
+    pub fn set_guardian_threshold(env: Env, m: u32) -> Result<(), ContractError> {
+        AdminClient::require_admin(&env)?;
+        if m == 0 || m > StorageClient::get_guardians(&env).len() {
+            return Err(ContractError::QuorumNotMet);
+        }
+        StorageClient::set_guardian_threshold(&env, m);
+        Ok(())
+    }
+
+    /// Break-glass: revoke the admin entirely with an M-of-N guardian quorum.
+    ///
+    /// `approvers` must contain at least M distinct guardians, each of which
+    /// must authorise the call; one short of M is rejected. On success the
+    /// contract is paused and enters the documented "admin vacant" state: every
+    /// admin-gated entry point fails with [`ContractError::AdminVacant`], while
+    /// `guardian_pause`, reads and (via the stored relay signer) nothing that
+    /// needs admin remain. Bootstrapping a new admin is a tracked follow-up
+    /// (see `docs/adr/0004-guardian-emergency-admin-revocation.md`).
+    ///
+    /// # Events
+    /// Emits [`events::EventAdminRevokedEmergency`].
+    pub fn revoke_admin_emergency(
+        env: Env,
+        approvers: soroban_sdk::Vec<Address>,
+    ) -> Result<(), ContractError> {
+        let threshold = StorageClient::get_guardian_threshold(&env);
+        if threshold == 0 {
+            return Err(ContractError::QuorumNotMet);
+        }
+        let guardians = StorageClient::get_guardians(&env);
+        let mut seen: soroban_sdk::Vec<Address> = soroban_sdk::Vec::new(&env);
+        for a in approvers.iter() {
+            if !guardians.contains(&a) {
+                return Err(ContractError::NotGuardian);
+            }
+            if !seen.contains(&a) {
+                a.require_auth();
+                seen.push_back(a);
+            }
+        }
+        if seen.len() < threshold {
+            return Err(ContractError::QuorumNotMet);
+        }
+        let admin = StorageClient::get_admin(&env)?;
+        StorageClient::vacate_admin(&env);
+        StorageClient::set_paused(&env, true);
+        EventEmitter::admin_revoked_emergency(&env, &admin, seen.len());
+        Ok(())
+    }
+
     /// Return the configured guardian set.
     pub fn guardians(env: Env) -> soroban_sdk::Vec<Address> {
         StorageClient::get_guardians(&env)
