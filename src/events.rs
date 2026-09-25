@@ -26,6 +26,21 @@ use crate::types::TransactionStatus;
 
 // ─── Event data structs ───────────────────────────────────────────────────────
 
+/// Emitted by [`SynapseCoreContract::heartbeat`].
+#[contracttype]
+pub struct EventHeartbeat {
+    pub signer: soroban_sdk::Address,
+    pub timestamp: u64,
+}
+
+/// Emitted by [`SynapseCoreContract::clear_quarantine`].
+#[contracttype]
+pub struct EventQuarantineCleared {
+    pub signer: soroban_sdk::Address,
+    pub admin: soroban_sdk::Address,
+    pub ledger: u32,
+}
+
 /// Emitted by [`SynapseCoreContract::initialize`].
 #[contracttype]
 pub struct EventInitialised {
@@ -291,6 +306,33 @@ impl EventEmitter {
             EventAdminTransferred {
                 old_admin: old_admin.clone(),
                 new_admin: new_admin.clone(),
+                ledger: env.ledger().sequence(),
+            },
+        );
+    }
+
+    /// Emit [`EventHeartbeat`].
+    pub fn heartbeat(env: &Env, signer: &soroban_sdk::Address) {
+        env.events().publish(
+            (symbol_short!("synapse"), symbol_short!("hbeat")),
+            EventHeartbeat {
+                signer: signer.clone(),
+                timestamp: env.ledger().timestamp(),
+            },
+        );
+    }
+
+    /// Emit [`EventQuarantineCleared`].
+    pub fn quarantine_cleared(
+        env: &Env,
+        signer: &soroban_sdk::Address,
+        admin: &soroban_sdk::Address,
+    ) {
+        env.events().publish(
+            (symbol_short!("synapse"), symbol_short!("qclear")),
+            EventQuarantineCleared {
+                signer: signer.clone(),
+                admin: admin.clone(),
                 ledger: env.ledger().sequence(),
             },
         );

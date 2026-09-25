@@ -42,7 +42,6 @@ impl AdminClient {
     /// Assert that `caller` is specifically the relay signer (not the admin).
     ///
     /// Used by `register_callback` — only the relay may ingest callbacks.
-    #[allow(dead_code)]
     pub fn require_relay_signer(env: &Env, caller: &Address) -> Result<(), ContractError> {
         let relay = StorageClient::get_relay_signer(env)?;
         if caller != &relay {
@@ -51,4 +50,25 @@ impl AdminClient {
         caller.require_auth();
         Ok(())
     }
+
+impl AdminClient {
+    /// Reject `signer` with [`ContractError::SignerQuarantined`] when its last
+    /// heartbeat is older than the configured window.
+    ///
+    /// A signer that has never heartbeated, or a window of `0`, is never
+    /// quarantined (backward compatible). Staleness is strict: a signer is
+    /// quarantined only when `now - last_heartbeat > window`.
+    pub fn assert_not_quarantined(env: &Env, signer: &Address) -> Result<(), ContractError> {
+        let window = StorageClient::get_heartbeat_window(env);
+        if window == 0 {
+            return Ok(());
+        }
+        if let Some(last) = StorageClient::get_last_heartbeat(env, signer) {
+            if env.ledger().timestamp().saturating_sub(last) > window {
+                return Err(ContractError::SignerQuarantined);
+            }
+        }
+        Ok(())
+    }
+}
 }

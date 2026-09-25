@@ -192,4 +192,35 @@ impl StorageClient {
             IDEMPOTENCY_TTL_LEDGERS,
         );
     }
+
+    // ── Relay-signer liveness ─────────────────────────────────────────────────
+
+    /// Last heartbeat ledger timestamp recorded for `signer`, if any.
+    pub fn get_last_heartbeat(env: &Env, signer: &Address) -> Option<u64> {
+        env.storage()
+            .persistent()
+            .get(&StorageKey::LastHeartbeat(signer.clone()))
+    }
+
+    /// Record `ts` as `signer`'s last heartbeat.
+    pub fn set_last_heartbeat(env: &Env, signer: &Address, ts: u64) {
+        env.storage()
+            .persistent()
+            .set(&StorageKey::LastHeartbeat(signer.clone()), &ts);
+    }
+
+    /// Staleness window in seconds; `0` (default) disables quarantine.
+    pub fn get_heartbeat_window(env: &Env) -> u64 {
+        env.storage()
+            .persistent()
+            .get(&StorageKey::HeartbeatWindow)
+            .unwrap_or(0)
+    }
+
+    /// Persist the staleness window in seconds.
+    pub fn set_heartbeat_window(env: &Env, secs: u64) {
+        env.storage()
+            .persistent()
+            .set(&StorageKey::HeartbeatWindow, &secs);
+    }
 }

@@ -172,6 +172,10 @@ pub enum StorageKey {
     /// Singleton: on-chain storage schema version, set at `initialize()`.
     /// See [`SCHEMA_VERSION`].
     SchemaVersion,
+    /// Per-signer ledger timestamp of the last `heartbeat()` call.
+    LastHeartbeat(soroban_sdk::Address),
+    /// Singleton: staleness window in seconds; absent/0 disables quarantine.
+    HeartbeatWindow,
 }
 
 // ─── Errors ───────────────────────────────────────────────────────────────────
@@ -238,4 +242,9 @@ pub enum ContractError {
     /// on-chain [`SchemaVersion`](StorageKey::SchemaVersion); the upgrade was
     /// aborted before touching contract WASM.
     SchemaVersionMismatch = 60,
+
+    // ── Liveness / quarantine (300+) ────────────────────────────────────────
+    /// The relay signer's heartbeat is stale beyond the configured window;
+    /// new registrations are refused until it heartbeats or is cleared.
+    SignerQuarantined = 300,
 }

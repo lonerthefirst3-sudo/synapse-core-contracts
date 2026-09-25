@@ -116,6 +116,10 @@ impl SynapseCoreContract {
         let relay = StorageClient::get_relay_signer(&env)?;
         relay.require_auth();
 
+        // Quarantine: a signer with a stale heartbeat cannot take new intake.
+        // Existing Pending/Processing work stays processable.
+        AdminClient::assert_not_quarantined(&env, &relay)?;
+
         Validator::validate_payload(&env, &payload)?;
 
         // Idempotency: a replayed key returns the original tx id without a
@@ -348,6 +352,46 @@ impl SynapseCoreContract {
         StorageClient::set_relay_signer(&env, &new_signer);
         EventEmitter::relay_signer_rotated(&env, &old_signer, &new_signer);
         Ok(())
+    }
+
+    // ── Relay-signer liveness ─────────────────────────────────────────────────
+
+    /// Record a liveness heartbeat for the relay signer `caller`.
+    ///
+    /// Only the registered relay signer may call this.
+    ///
+    /// # Events
+    /// Emits [`events::EventHeartbeat`].
+    pub fn heartbeat(env: Env, caller: Address) -> Result<(), ContractError> {
+        AdminClient::require_relay_signer(&env, &caller)?;
+        StorageClient::set_last_heartbeat(&env, &caller, env.ledger().timestamp());
+        EventEmitter::heartbeat(&env, &caller);
+        Ok(())
+    }
+
+    /// Set the heartbeat staleness window in seconds (`0` disables
+    /// quarantine). Admin-gated.
+    pub fn set_heartbeat_window(env: Env, secs: u64) -> Result<(), ContractError> {
+        AdminClient::require_admin(&env)?;
+        StorageClient::set_heartbeat_window(&env, secs);
+        Ok(())
+    }
+
+    /// Manually lift a quarantine by resetting `signer`'s heartbeat to now.
+    /// Admin-gated.
+    ///
+    /// # Events
+    /// Emits [`events::EventQuarantineCleared`].
+    pub fn clear_quarantine(env: Env, signer: Address) -> Result<(), ContractError> {
+        let admin = AdminClient::require_admin(&env)?;
+        StorageClient::set_last_heartbeat(&env, &signer, env.ledger().timestamp());
+        EventEmitter::quarantine_cleared(&env, &signer, &admin);
+        Ok(())
+    }
+
+    /// Return whether `signer` is currently quarantined.
+    pub fn is_quarantined(env: Env, signer: Address) -> bool {
+        AdminClient::assert_not_quarantined(&env, &signer).is_err()
     }
 
     // ── Contract upgrade ───────────────────────────────────────────────────────
