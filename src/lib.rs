@@ -480,6 +480,38 @@ impl SynapseCoreContract {
         Ok(())
     }
 
+    /// Set the guardian set. Admin-gated; simple (non-timelocked) rotation,
+    /// flagged as a fast-follow. Replaces any previous set.
+    pub fn set_guardians(env: Env, guardians: soroban_sdk::Vec<Address>) -> Result<(), ContractError> {
+        AdminClient::require_admin(&env)?;
+        StorageClient::set_guardians(&env, &guardians);
+        Ok(())
+    }
+
+    /// Return the configured guardian set.
+    pub fn guardians(env: Env) -> soroban_sdk::Vec<Address> {
+        StorageClient::get_guardians(&env)
+    }
+
+    /// Engage the circuit breaker on guardian authority alone, without admin
+    /// rights, so an incident responder can halt the contract when the admin
+    /// key is suspected compromised. Idempotent.
+    ///
+    /// Design choice: **unpause remains admin-only**. A guardian that is also
+    /// the admin is harmless: it simply passes either check.
+    ///
+    /// # Events
+    /// Emits [`events::EventGuardianPaused`] (not `EventPauseToggled`).
+    pub fn guardian_pause(env: Env, caller: Address) -> Result<(), ContractError> {
+        if !StorageClient::get_guardians(&env).contains(&caller) {
+            return Err(ContractError::NotGuardian);
+        }
+        caller.require_auth();
+        StorageClient::set_paused(&env, true);
+        EventEmitter::guardian_paused(&env, &caller);
+        Ok(())
+    }
+
     /// Release the emergency circuit breaker, resuming normal callback
     /// ingestion.  Admin-gated. Idempotent.
     pub fn unpause(env: Env) -> Result<(), ContractError> {

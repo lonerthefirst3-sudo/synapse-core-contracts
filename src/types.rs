@@ -178,6 +178,8 @@ pub enum StorageKey {
     HeartbeatWindow,
     /// Per-address set of granted [`RoleScope`]s.
     Scopes(soroban_sdk::Address),
+    /// Singleton: guardian address set (may `guardian_pause`).
+    Guardians,
 }
 
 /// Narrow processing-lifecycle permissions grantable independently of the
@@ -257,6 +259,8 @@ pub enum ContractError {
     /// on-chain [`SchemaVersion`](StorageKey::SchemaVersion); the upgrade was
     /// aborted before touching contract WASM.
     SchemaVersionMismatch = 60,
+    /// Caller is not a guardian.
+    NotGuardian = 301,
 
     // ── Liveness / quarantine (300+) ────────────────────────────────────────
     /// The relay signer's heartbeat is stale beyond the configured window;

@@ -240,4 +240,21 @@ impl StorageClient {
             .persistent()
             .set(&StorageKey::Scopes(who.clone()), scopes);
     }
+
+    // ── Guardians ─────────────────────────────────────────────────────────────
+
+    /// Current guardian set (empty when none configured).
+    pub fn get_guardians(env: &Env) -> soroban_sdk::Vec<Address> {
+        env.storage()
+            .persistent()
+            .get(&StorageKey::Guardians)
+            .unwrap_or(soroban_sdk::Vec::new(env))
+    }
+
+    /// Persist the guardian set.
+    pub fn set_guardians(env: &Env, guardians: &soroban_sdk::Vec<Address>) {
+        env.storage()
+            .persistent()
+            .set(&StorageKey::Guardians, guardians);
+    }
 }

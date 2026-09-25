@@ -26,6 +26,14 @@ use crate::types::TransactionStatus;
 
 // ─── Event data structs ───────────────────────────────────────────────────────
 
+/// Emitted by [`SynapseCoreContract::guardian_pause`]; distinct from
+/// [`EventPauseToggled`] so forensics can tell guardian pauses apart.
+#[contracttype]
+pub struct EventGuardianPaused {
+    pub guardian: soroban_sdk::Address,
+    pub ledger: u32,
+}
+
 /// Emitted by [`SynapseCoreContract::heartbeat`].
 #[contracttype]
 pub struct EventHeartbeat {
@@ -333,6 +341,17 @@ impl EventEmitter {
             EventQuarantineCleared {
                 signer: signer.clone(),
                 admin: admin.clone(),
+                ledger: env.ledger().sequence(),
+            },
+        );
+    }
+
+    /// Emit [`EventGuardianPaused`].
+    pub fn guardian_paused(env: &Env, guardian: &soroban_sdk::Address) {
+        env.events().publish(
+            (symbol_short!("synapse"), symbol_short!("gpause")),
+            EventGuardianPaused {
+                guardian: guardian.clone(),
                 ledger: env.ledger().sequence(),
             },
         );
