@@ -223,4 +223,21 @@ impl StorageClient {
             .persistent()
             .set(&StorageKey::HeartbeatWindow, &secs);
     }
+
+    // ── Role scopes ───────────────────────────────────────────────────────────
+
+    /// Scopes granted to `who` (empty when none).
+    pub fn get_scopes(env: &Env, who: &Address) -> soroban_sdk::Vec<crate::types::RoleScope> {
+        env.storage()
+            .persistent()
+            .get(&StorageKey::Scopes(who.clone()))
+            .unwrap_or(soroban_sdk::Vec::new(env))
+    }
+
+    /// Persist the scope set for `who`.
+    pub fn set_scopes(env: &Env, who: &Address, scopes: &soroban_sdk::Vec<crate::types::RoleScope>) {
+        env.storage()
+            .persistent()
+            .set(&StorageKey::Scopes(who.clone()), scopes);
+    }
 }

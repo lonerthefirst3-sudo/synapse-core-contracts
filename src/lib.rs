@@ -43,7 +43,7 @@ use crate::admin::AdminClient;
 use crate::events::EventEmitter;
 use crate::storage::StorageClient;
 use crate::types::{
-    CallbackPayload, ContractError, Transaction, TransactionStatus, SCHEMA_VERSION,
+    CallbackPayload, ContractError, RoleScope, Transaction, TransactionStatus, SCHEMA_VERSION,
 };
 use crate::validation::Validator;
 
@@ -167,7 +167,7 @@ impl SynapseCoreContract {
     /// Called by the relay when the off-chain processor picks up the job.
     /// Enforces the state machine: only `Pending → Processing` is valid here.
     pub fn start_processing(env: Env, tx_id: String, caller: Address) -> Result<(), ContractError> {
-        AdminClient::assert_is_relay_or_admin(&env, &caller)?;
+        AdminClient::require_scope(&env, &caller, RoleScope::StartProcessing)?;
 
         let mut tx = StorageClient::get_transaction(&env, &tx_id)?;
         if tx.status != TransactionStatus::Pending {
@@ -193,7 +193,7 @@ impl SynapseCoreContract {
         stellar_tx_hash: String,
         caller: Address,
     ) -> Result<(), ContractError> {
-        AdminClient::assert_is_relay_or_admin(&env, &caller)?;
+        AdminClient::require_scope(&env, &caller, RoleScope::CompleteTransaction)?;
         Validator::validate_stellar_tx_hash(&stellar_tx_hash)?;
 
         let mut tx = StorageClient::get_transaction(&env, &tx_id)?;
@@ -222,7 +222,7 @@ impl SynapseCoreContract {
         reason: String,
         caller: Address,
     ) -> Result<(), ContractError> {
-        AdminClient::assert_is_relay_or_admin(&env, &caller)?;
+        AdminClient::require_scope(&env, &caller, RoleScope::FailTransaction)?;
         Validator::validate_failure_reason(&reason)?;
 
         let mut tx = StorageClient::get_transaction(&env, &tx_id)?;
@@ -392,6 +392,35 @@ impl SynapseCoreContract {
     /// Return whether `signer` is currently quarantined.
     pub fn is_quarantined(env: Env, signer: Address) -> bool {
         AdminClient::assert_not_quarantined(&env, &signer).is_err()
+    }
+
+    // ── Role scopes ─────────────────────────────────────────────────────────────
+
+    /// Grant `scope` to `who` (idempotent). Admin-gated.
+    pub fn grant_scope(env: Env, who: Address, scope: RoleScope) -> Result<(), ContractError> {
+        AdminClient::require_admin(&env)?;
+        let mut scopes = StorageClient::get_scopes(&env, &who);
+        if !scopes.contains(scope) {
+            scopes.push_back(scope);
+            StorageClient::set_scopes(&env, &who, &scopes);
+        }
+        Ok(())
+    }
+
+    /// Revoke `scope` from `who` (idempotent). Admin-gated.
+    pub fn revoke_scope(env: Env, who: Address, scope: RoleScope) -> Result<(), ContractError> {
+        AdminClient::require_admin(&env)?;
+        let mut scopes = StorageClient::get_scopes(&env, &who);
+        if let Some(i) = scopes.first_index_of(scope) {
+            scopes.remove(i);
+            StorageClient::set_scopes(&env, &who, &scopes);
+        }
+        Ok(())
+    }
+
+    /// Return whether `who` has been explicitly granted `scope`.
+    pub fn has_scope(env: Env, who: Address, scope: RoleScope) -> bool {
+        StorageClient::get_scopes(&env, &who).contains(scope)
     }
 
     // ── Contract upgrade ───────────────────────────────────────────────────────

@@ -176,6 +176,21 @@ pub enum StorageKey {
     LastHeartbeat(soroban_sdk::Address),
     /// Singleton: staleness window in seconds; absent/0 disables quarantine.
     HeartbeatWindow,
+    /// Per-address set of granted [`RoleScope`]s.
+    Scopes(soroban_sdk::Address),
+}
+
+/// Narrow processing-lifecycle permissions grantable independently of the
+/// relay signer. The relay signer and admin implicitly hold every scope.
+#[contracttype]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum RoleScope {
+    /// May call `start_processing`.
+    StartProcessing,
+    /// May call `complete_transaction`.
+    CompleteTransaction,
+    /// May call `fail_transaction`.
+    FailTransaction,
 }
 
 // ─── Errors ───────────────────────────────────────────────────────────────────

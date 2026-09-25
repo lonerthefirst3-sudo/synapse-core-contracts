@@ -71,4 +71,27 @@ impl AdminClient {
         Ok(())
     }
 }
+
+impl AdminClient {
+    /// Assert that `caller` holds `scope`, then require its auth.
+    ///
+    /// The admin and relay signer implicitly hold all scopes. Any other caller
+    /// lacking the scope gets the same [`ContractError::Unauthorised`] as an
+    /// unknown address, so error output does not reveal which addresses hold
+    /// other scopes.
+    pub fn require_scope(
+        env: &Env,
+        caller: &Address,
+        scope: crate::types::RoleScope,
+    ) -> Result<(), ContractError> {
+        let admin = StorageClient::get_admin(env)?;
+        let relay = StorageClient::get_relay_signer(env)?;
+        if caller != &admin && caller != &relay && !StorageClient::get_scopes(env, caller).contains(scope)
+        {
+            return Err(ContractError::Unauthorised);
+        }
+        caller.require_auth();
+        Ok(())
+    }
+}
 }
