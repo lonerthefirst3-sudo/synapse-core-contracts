@@ -70,9 +70,7 @@ impl AdminClient {
         }
         Ok(())
     }
-}
 
-impl AdminClient {
     /// Assert that `caller` holds `scope`, then require its auth.
     ///
     /// The admin and relay signer implicitly hold all scopes. Any other caller
