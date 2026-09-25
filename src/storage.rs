@@ -239,7 +239,11 @@ impl StorageClient {
     }
 
     /// Persist the scope set for `who`.
-    pub fn set_scopes(env: &Env, who: &Address, scopes: &soroban_sdk::Vec<crate::types::RoleScope>) {
+    pub fn set_scopes(
+        env: &Env,
+        who: &Address,
+        scopes: &soroban_sdk::Vec<crate::types::RoleScope>,
+    ) {
         env.storage()
             .persistent()
             .set(&StorageKey::Scopes(who.clone()), scopes);
@@ -288,6 +292,8 @@ impl StorageClient {
     pub fn vacate_admin(env: &Env) {
         env.storage().persistent().remove(&StorageKey::Admin);
         env.storage().persistent().remove(&StorageKey::PendingAdmin);
-        env.storage().persistent().set(&StorageKey::AdminVacant, &true);
+        env.storage()
+            .persistent()
+            .set(&StorageKey::AdminVacant, &true);
     }
 }

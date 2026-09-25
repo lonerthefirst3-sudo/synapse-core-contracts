@@ -51,7 +51,6 @@ impl AdminClient {
         Ok(())
     }
 
-impl AdminClient {
     /// Reject `signer` with [`ContractError::SignerQuarantined`] when its last
     /// heartbeat is older than the configured window.
     ///
@@ -84,12 +83,13 @@ impl AdminClient {
     ) -> Result<(), ContractError> {
         let admin = StorageClient::get_admin(env)?;
         let relay = StorageClient::get_relay_signer(env)?;
-        if caller != &admin && caller != &relay && !StorageClient::get_scopes(env, caller).contains(scope)
+        if caller != &admin
+            && caller != &relay
+            && !StorageClient::get_scopes(env, caller).contains(scope)
         {
             return Err(ContractError::Unauthorised);
         }
         caller.require_auth();
         Ok(())
     }
-}
 }

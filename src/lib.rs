@@ -482,7 +482,10 @@ impl SynapseCoreContract {
 
     /// Set the guardian set. Admin-gated; simple (non-timelocked) rotation,
     /// flagged as a fast-follow. Replaces any previous set.
-    pub fn set_guardians(env: Env, guardians: soroban_sdk::Vec<Address>) -> Result<(), ContractError> {
+    pub fn set_guardians(
+        env: Env,
+        guardians: soroban_sdk::Vec<Address>,
+    ) -> Result<(), ContractError> {
         AdminClient::require_admin(&env)?;
         StorageClient::set_guardians(&env, &guardians);
         Ok(())
